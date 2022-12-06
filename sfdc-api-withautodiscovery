@@ -11,7 +11,7 @@ http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/m
 		<http:listener-connection host="0.0.0.0" port="8081" />
 	</http:listener-config>
 	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="60c8d2bd-a645-4562-9b7d-b2e26e192b43" >
-		<salesforce:basic-connection username="mani.mulesoft@gmail.com" password="Mule@12349" securityToken="DtnRpqWnDpIvVD6CcJPuZNbkB"/>
+		<salesforce:basic-connection username="mani.mulesoft@gmail.com" password="888" securityToken="DtnRpqWnDpIvVD6CcJPuZNbkB"/>
 	</salesforce:sfdc-config>
 	<api-gateway:autodiscovery apiId="18346176" ignoreBasePath="false" doc:name="API Autodiscovery" doc:id="9ed58e1c-8e15-44a7-807c-1687b2a6ea0a" flowRef="salesforce-oauthFlow"/>
 	<flow name="salesforce-oauthFlow" doc:id="c9cd0f59-88cb-4bac-a517-a7fcdca0a16e" >
