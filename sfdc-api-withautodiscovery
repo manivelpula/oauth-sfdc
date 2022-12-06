@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="ac322c37-d36d-4847-91f8-18857f7752f8" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="60c8d2bd-a645-4562-9b7d-b2e26e192b43" >
+		<salesforce:basic-connection username="mani.mulesoft@gmail.com" password="Mule@12349" securityToken="DtnRpqWnDpIvVD6CcJPuZNbkB"/>
+	</salesforce:sfdc-config>
+	<api-gateway:autodiscovery apiId="18346176" ignoreBasePath="false" doc:name="API Autodiscovery" doc:id="9ed58e1c-8e15-44a7-807c-1687b2a6ea0a" flowRef="salesforce-oauthFlow"/>
+	<flow name="salesforce-oauthFlow" doc:id="c9cd0f59-88cb-4bac-a517-a7fcdca0a16e" >
+		<http:listener doc:name="Listener" doc:id="fa5ba4b8-67bd-4970-8ec9-b2dd20273574" config-ref="HTTP_Listener_config" path="/query"/>
+		<salesforce:query doc:name="Query" doc:id="2b14d39b-5aca-4962-afb3-6d9c30b72e93" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query ><![CDATA[SELECT Id,Name,Phone FROM Contact]]></salesforce:salesforce-query>
+		</salesforce:query>
+		<ee:transform doc:name="Transform Message" doc:id="6eef6f76-ae4d-47d6-95aa-8bcc218ff795" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="c60c5935-9f72-40d3-89e2-6161289785ca" message="#[payload]"/>
+	</flow>
+	<flow name="salesforce-oauthFlow1" doc:id="14aa8e12-d37b-4a18-bd6d-c083e9fb8f88" >
+		<http:listener doc:name="Listener" doc:id="a3922786-0402-421b-ab39-33e25ab261c3" config-ref="HTTP_Listener_config" path="/upset"/>
+		<ee:transform doc:name="Transform Message" doc:id="5d262f3c-1362-4752-b34e-7e862350e248" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+ payload map {
+
+    "Phone": payload.Payload,
+    "Id": payload.Id,
+    "Name": payload.Name
+  
+ }]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<salesforce:update type="Contact" doc:name="Update" doc:id="1cb798ee-39e8-41b4-846c-d452ad530ca2" config-ref="Salesforce_Config"/>
+	</flow>
+</mule>
