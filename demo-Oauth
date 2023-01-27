@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking"
+	xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/current/mule-wsc.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="6bf7b509-e364-47a1-b1d1-56937294d109" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<os:object-store name="Object_store" doc:name="Object store" doc:id="a4d5f6cb-e745-492c-a932-25999de989d8" entryTtl="23" entryTtlUnit="HOURS"/>
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="260fbfcc-32ed-4a2c-9842-ea2d95d88b95" >
+		<salesforce:basic-connection username="mani.mulesoft@gmail.com" password="8888****" securityToken="DtnRpqWnDpIvVD6CcJPuZNbkB"/>
+	</salesforce:sfdc-config>
+	<sub-flow name="Requesttokenflow" doc:id="b801dfb0-be67-4138-ac14-5c57e6befe53" >
+		<os:retrieve doc:name="Retrieve" doc:id="a9de7ff9-ed4e-414e-8fed-3cb5999f503d" key="#[vars.OauthPayload.client_id]" objectStore="Object_store">
+			<os:default-value ><![CDATA[#[""]]]></os:default-value>
+		</os:retrieve>
+		<logger level="DEBUG" doc:name="Logger" doc:id="55c0f56b-a19e-41d8-8375-666960c8eef5"/>
+		<choice doc:name="Choice" doc:id="e01abca2-1450-4954-8104-075aea043384" >
+			<when expression="#[isEmpty(payload)]">
+				<http:request method="POST" doc:name="Request" doc:id="cfa36eb2-044c-445d-8df4-39fa9c02b3cd" url="https://dev-0s6xug4o.us.auth0.com/oauth/token" >
+					<http:body ><![CDATA[#[vars.OauthPayload]]]></http:body>
+				</http:request>
+				<os:store doc:name="Store" doc:id="b1f60bfc-ecf2-4cb3-8011-89be9ed6137d" key="#[vars.OauthPayload.client_id]" objectStore="Object_store">
+				</os:store>
+				<set-variable value='#["Bearer " ++ payload.access_token]' doc:name="Set Variable" doc:id="7f11a43d-0a4a-4802-9b97-04b71a3160f8" variableName="requestToken" />
+			
+</when>
+			<otherwise >
+				<set-variable doc:name="Set Variable" doc:id="b6479a60-54a6-4ac4-9ca7-1652c4c055c5" variableName="requestToken" value='#["Bearer " ++ payload.access_token as String]'/>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	<flow name="oauthFlow" doc:id="ade55728-1509-4f4c-ba55-48c4199c2da4" >
+		<http:listener doc:name="Listener" doc:id="fe50c821-7c12-480e-a00e-b513ace6778c" config-ref="HTTP_Listener_config" path="/demo"/>
+		<ee:transform doc:name="Transform Message" doc:id="f8a802fa-851b-40e9-95e4-7f072ead94ef">
+			<ee:message>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="OauthPayload" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"client_id": "6TsjBJef3wrH9qzMNz8IAyiqdHi2R9sv",
+	"client_secret": "LVFKSLN12PrzybUGLrGfypEpzVPr3U9xRNZceJeYBxI676K7r_UJKZvXr-TpgIgL",
+	"audience": "https://dev-0s6xug4o.us.auth0.com/api/v2/",
+	"grant_type": "client_credentials"
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="Request token flow" doc:id="db72bad3-a342-44b5-b07b-9fd0dd222f18" name="Requesttokenflow" />
+		<http:request method="GET" doc:name="Request" doc:id="568b59c8-362e-431c-bff9-c28f19d38ce9" url="http://dev-sales-query.us-e2.cloudhub.io/query">
+			<http:headers ><![CDATA[#[{
+	"Authorization" : vars.requestToken
+}]]]></http:headers>
+		</http:request>
+		<ee:transform doc:name="Transform Message" doc:id="c7c27cc6-4d1d-49a1-9592-09e9dd6c08e4" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"code": 200,
+	"message": "feached conact data",
+	"payload": payload
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="demo-oauthFlow" doc:id="e619731a-22ca-4956-996b-327ae5b343c5" >
+		<http:listener doc:name="Listener" doc:id="395a4b7b-590f-4388-bc91-e7a335dc3c87" config-ref="HTTP_Listener_config" path="/demo9"/>
+		<salesforce:query doc:name="Query" doc:id="e1842f01-618d-4ede-8949-7455cf7e4a09" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query><![CDATA[SELECT Id,Phone,Active__c FROM Account where (LastModifiedDate >= :startDate  and LastModifiedDate <= :endDate)]]></salesforce:salesforce-query>
+			<salesforce:parameters ><![CDATA[#[{
+	"startDate" : vars.startDate,
+	"endDate": vars.endDate
+}]]]></salesforce:parameters>
+		</salesforce:query>
+		<ee:transform doc:name="Transform Message" doc:id="a57beb36-e456-4647-96e7-5555995b1d3a">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="orginalPayload"><![CDATA[%dw 2.0
+output application/json
+---
+[] as Array]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="0dc12e2f-bde5-4956-9069-ed467796d0c9">
+			<ee:transform doc:name="Transform Message" doc:id="20dc9af1-2c22-4bc3-9899-651713261359">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+					<ee:set-variable variableName="id" ><![CDATA[%dw 2.0
+output application/java
+---
+payload.Id]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+			<http:request method="GET" doc:name="Request" doc:id="fc890797-1af0-4ea0-b8bf-255763957da6" url="https://reqres.in/api/users?page=2" />
+			<ee:transform doc:name="Transform Message" doc:id="da6ea39c-e987-4634-8bef-9b36ffe0b233">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.orginalPayload map $]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="orginalPayload"><![CDATA[%dw 2.0
+output application/json
+---
+
+flatten (vars.orginalPayload ++ [{
+	Id: vars.id,
+	email__c: "abc@gmail.com"//payload.data.email
+}])
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+			<logger level="INFO" doc:name="Logger" doc:id="5b86d035-1d6a-4e5e-8797-500d2bf9d03e" />
+		</foreach>
+<!-- [STUDIO:"Upsert"]		<salesforce:upsert objectType="Account" externalIdFieldName="Id" doc:name="Upsert" doc:id="c4f06da4-4338-49a5-a4b2-35b2ca79b181" config-ref="Salesforce_Config">
+			<salesforce:records ><![CDATA[#[vars.orginalPayload]]]></salesforce:records>
+		</salesforce:upsert> [STUDIO] -->
+		<salesforce:update doc:name="Update" doc:id="7615c0fc-d172-4fcb-bc4b-28d6f17e19fc" config-ref="Salesforce_Config" type="Account" >
+			<salesforce:records ><![CDATA[#[vars.orginalPayload]]]></salesforce:records>
+
+		</salesforce:update>
+		<logger level="INFO" doc:name="Logger" doc:id="a345b853-2cb6-487c-8843-297342446208" message="#[payload]"/>
+		<os:store doc:name="Store" doc:id="380117ca-93cd-4d02-947d-ee5567a542b0" key="startDate">
+			<os:value ><![CDATA[#[vars.endDate]]]></os:value>
+		</os:store>
+	</flow>
+	<flow name="demo-Schedular" doc:id="3d6328df-90c7-40bb-ba39-d4817722446d" >
+		<scheduler doc:name="Scheduler" doc:id="3a501b7a-ad4e-495f-9728-7c04050f338b" >
+			<scheduling-strategy >
+				<fixed-frequency timeUnit="MINUTES" frequency="5"/>
+			</scheduling-strategy>
+		</scheduler>
+		<flow-ref doc:name="oauthSub_Flow-Date" doc:id="3e4f9ac5-4380-4485-8506-8c1dbc96b038" name="demo-oauthSub_Flow-Date"/>
+		<flow-ref doc:name="oauthFlow" doc:id="5addaec0-79a0-4a66-b2c0-345f37a80e6e" name="demo-oauthFlow"/>
+	</flow>
+	<sub-flow name="demo-oauthSub_Flow-Date" doc:id="26874eea-f864-4092-bd78-a9ba8b360bb7" >
+		<os:retrieve doc:name="Retrieve" doc:id="ee05422c-77c6-4301-a265-83506a30b2fe" key="startDate">
+			<os:default-value ><![CDATA[#["2020-01-01T00:00:00.000Z"]]]></os:default-value>
+		</os:retrieve>
+		<set-variable value='#["2020-01-22T16:25:22.000+0000"]' doc:name="startDate" doc:id="072810dd-4754-41f7-beda-4a446abbc484" variableName="startDate"/>
+		<set-variable value="#[output application/json&#10;---&#10;((now())&gt;&gt;&quot;UTC&quot;) as DateTime{format:&quot;yyyy-MM-dd'T'HH:mm:ss.SSS+0000&quot;}]" doc:name="endDate" doc:id="9bb44c6c-bf92-495b-9000-c8a4cf9ecd8c" variableName="endDate"/>
+	</sub-flow>
+	
+</mule>
